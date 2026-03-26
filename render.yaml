@@ -11,17 +11,22 @@ services:
       set -euxo pipefail
       python --version
       python -m pip --version
-      # Install ffmpeg (required by yt-dlp postprocessing). If apt-get needs sudo, fall back.
-      if command -v apt-get >/dev/null 2>&1; then
-        (apt-get update && apt-get install -y --no-install-recommends ffmpeg) || (sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg)
-      else
-        echo "apt-get not found in build image; native ffmpeg install not possible here."
-        exit 1
+      # Render native services can't apt-get (read-only). Download a portable ffmpeg binary instead.
+      mkdir -p .render-bin
+      if [ ! -x .render-bin/ffmpeg ]; then
+        curl -L -o ffmpeg.tar.xz "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
+        tar -xf ffmpeg.tar.xz
+        dir="$(find . -maxdepth 1 -type d -name 'ffmpeg-*-amd64-static' | head -n 1)"
+        test -n "$dir"
+        mv "$dir/ffmpeg" .render-bin/ffmpeg
+        mv "$dir/ffprobe" .render-bin/ffprobe || true
+        chmod +x .render-bin/ffmpeg .render-bin/ffprobe || true
+        rm -rf "$dir" ffmpeg.tar.xz
       fi
-      ffmpeg -version
+      .render-bin/ffmpeg -version
       python -m pip install --upgrade pip setuptools wheel
       pip install --prefer-binary -r requirements.txt
-    startCommand: python -m uvicorn main:app --host 0.0.0.0 --port $PORT
+    startCommand: bash -lc 'export PATH="$PWD/.render-bin:$PATH" && python -m uvicorn main:app --host 0.0.0.0 --port $PORT'
     healthCheckPath: /api/podcast/health
     envVars:
       # Pin Python for better wheel availability (faster-whisper/ctranslate2).
