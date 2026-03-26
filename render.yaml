@@ -5,6 +5,10 @@ services:
     plan: free
     rootDir: .
     autoDeploy: true
+    # Build steps:
+    # - confirm python/pip
+    # - download portable ffmpeg to .render-bin (Render native can't apt-get)
+    # - install python deps
     buildCommand: >
       bash -lc 'set -euxo pipefail;
       python --version;
@@ -22,7 +26,8 @@ services:
       fi;
       .render-bin/ffmpeg -version;
       python -m pip install --upgrade pip setuptools wheel;
-      pip install --prefer-binary -r requirements.txt'
+      python -m pip install --prefer-binary -r requirements.txt;
+      python -m pip show uvicorn'
     startCommand: bash -lc 'export PATH="$PWD/.render-bin:$PATH" && python -m uvicorn main:app --host 0.0.0.0 --port $PORT'
     healthCheckPath: /api/podcast/health
     envVars:
