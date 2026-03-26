@@ -7,25 +7,25 @@ services:
     # If your repo is a monorepo with /backend, change this to "backend".
     rootDir: .
     autoDeploy: true
-    buildCommand: |
-      set -euxo pipefail
-      python --version
-      python -m pip --version
-      # Render native services can't apt-get (read-only). Download a portable ffmpeg binary instead.
-      mkdir -p .render-bin
+    # Render sometimes flattens newlines; wrap in bash -lc to keep 'if ... then' working.
+    buildCommand: >
+      bash -lc 'set -euxo pipefail;
+      python --version;
+      python -m pip --version;
+      mkdir -p .render-bin;
       if [ ! -x .render-bin/ffmpeg ]; then
-        curl -L -o ffmpeg.tar.xz "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz"
-        tar -xf ffmpeg.tar.xz
-        dir="$(find . -maxdepth 1 -type d -name 'ffmpeg-*-amd64-static' | head -n 1)"
-        test -n "$dir"
-        mv "$dir/ffmpeg" .render-bin/ffmpeg
-        mv "$dir/ffprobe" .render-bin/ffprobe || true
-        chmod +x .render-bin/ffmpeg .render-bin/ffprobe || true
-        rm -rf "$dir" ffmpeg.tar.xz
-      fi
-      .render-bin/ffmpeg -version
-      python -m pip install --upgrade pip setuptools wheel
-      pip install --prefer-binary -r requirements.txt
+        curl -L -o ffmpeg.tar.xz "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz";
+        tar -xf ffmpeg.tar.xz;
+        dir="$(find . -maxdepth 1 -type d -name "ffmpeg-*-amd64-static" | head -n 1)";
+        test -n "$dir";
+        mv "$dir/ffmpeg" .render-bin/ffmpeg;
+        mv "$dir/ffprobe" .render-bin/ffprobe || true;
+        chmod +x .render-bin/ffmpeg .render-bin/ffprobe || true;
+        rm -rf "$dir" ffmpeg.tar.xz;
+      fi;
+      .render-bin/ffmpeg -version;
+      python -m pip install --upgrade pip setuptools wheel;
+      pip install --prefer-binary -r requirements.txt'
     startCommand: bash -lc 'export PATH="$PWD/.render-bin:$PATH" && python -m uvicorn main:app --host 0.0.0.0 --port $PORT'
     healthCheckPath: /api/podcast/health
     envVars:
