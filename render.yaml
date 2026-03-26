@@ -1,0 +1,38 @@
+services:
+  - type: web
+    name: podcast-pal-backend
+    runtime: python
+    plan: free
+    rootDir: backend
+    autoDeploy: true
+    buildCommand: |
+      apt-get update && apt-get install -y --no-install-recommends ffmpeg &&
+      rm -rf /var/lib/apt/lists/* &&
+      python -m pip install --upgrade pip setuptools wheel &&
+      pip install --prefer-binary -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/podcast/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-2.5-flash
+      - key: WHISPER_MODEL_SIZE
+        value: base
+      - key: CORS_ORIGINS
+        sync: false
+      - key: NOTES_TRANSCRIPT_MAX_CHARS
+        value: "24000"
+      - key: NOTE_CHAT_TRANSCRIPT_MAX_CHARS_BRIEF
+        value: "6000"
+      - key: NOTE_CHAT_TRANSCRIPT_MAX_CHARS
+        value: "28000"
+      - key: NOTE_CHAT_MAX_OUTPUT_TOKENS_BRIEF
+        value: "700"
+      - key: NOTE_CHAT_MAX_OUTPUT_TOKENS_EXPANDED
+        value: "1400"
+      # Optional if you use server-side Firestore sync from backend:
+      # - key: FIREBASE_SERVICE_ACCOUNT_JSON
+      #   sync: false
