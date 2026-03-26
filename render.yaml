@@ -28,7 +28,11 @@ services:
       python -m pip install --upgrade pip setuptools wheel;
       python -m pip install --prefer-binary -r requirements.txt;
       python -m pip show uvicorn'
-    startCommand: bash -lc 'export PATH="$PWD/.render-bin:$PATH" && python -m uvicorn main:app --host 0.0.0.0 --port $PORT'
+    # Ensure runtime venv has deps before boot (fixes intermittent "No module named uvicorn" on new instances).
+    startCommand: >
+      bash -lc 'export PATH="$PWD/.render-bin:$PATH";
+      python -m pip install --disable-pip-version-check --prefer-binary -r requirements.txt;
+      exec python -m uvicorn main:app --host 0.0.0.0 --port "$PORT"'
     healthCheckPath: /api/podcast/health
     envVars:
       - key: PYTHON_VERSION
