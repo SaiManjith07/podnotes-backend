@@ -3,7 +3,9 @@ services:
     name: podcast-pal-backend
     runtime: python
     plan: free
-    rootDir: backend
+    # If this repo is backend-only (main.py at repo root), use ".".
+    # If your repo is a monorepo with /backend, change this to "backend".
+    rootDir: .
     autoDeploy: true
     buildCommand: |
       set -euxo pipefail
