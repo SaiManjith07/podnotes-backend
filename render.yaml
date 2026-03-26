@@ -3,31 +3,29 @@ services:
     name: podcast-pal-backend
     runtime: python
     plan: free
-    # If this repo is backend-only (main.py at repo root), use ".".
-    # If your repo is a monorepo with /backend, change this to "backend".
     rootDir: .
     autoDeploy: true
-    # Render sometimes flattens newlines; wrap in bash -lc to keep 'if ... then' working.
     buildCommand: >
       bash -lc 'set -euxo pipefail;
       python --version;
       python -m pip --version;
-      rm -rf .render-bin ffmpeg.tar.xz ffmpeg-*-amd64-static || true;
       mkdir -p .render-bin;
-      curl -L -o ffmpeg.tar.xz "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz";
-      tar -xf ffmpeg.tar.xz;
-      dir=$(find . -maxdepth 1 -type d -name "ffmpeg-*-amd64-static" | head -n 1);
-      test -n "$dir";
-      cp "$dir/ffmpeg" .render-bin/ffmpeg;
-      cp "$dir/ffprobe" .render-bin/ffprobe || true;
-      chmod +x .render-bin/ffmpeg .render-bin/ffprobe || true;
+      if [ ! -x .render-bin/ffmpeg ]; then
+        curl -L -o ffmpeg.tar.xz "https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz";
+        tar -xf ffmpeg.tar.xz;
+        dir="$(find . -maxdepth 1 -type d -name "ffmpeg-*-amd64-static" | head -n 1)";
+        test -n "$dir";
+        mv "$dir/ffmpeg" .render-bin/ffmpeg;
+        mv "$dir/ffprobe" .render-bin/ffprobe || true;
+        chmod +x .render-bin/ffmpeg .render-bin/ffprobe || true;
+        rm -rf "$dir" ffmpeg.tar.xz;
+      fi;
       .render-bin/ffmpeg -version;
       python -m pip install --upgrade pip setuptools wheel;
       pip install --prefer-binary -r requirements.txt'
     startCommand: bash -lc 'export PATH="$PWD/.render-bin:$PATH" && python -m uvicorn main:app --host 0.0.0.0 --port $PORT'
     healthCheckPath: /api/podcast/health
     envVars:
-      # Pin Python for better wheel availability (faster-whisper/ctranslate2).
       - key: PYTHON_VERSION
         value: 3.11.9
       - key: GEMINI_API_KEY
@@ -48,6 +46,3 @@ services:
         value: "700"
       - key: NOTE_CHAT_MAX_OUTPUT_TOKENS_EXPANDED
         value: "1400"
-      # Optional if you use server-side Firestore sync from backend:
-      # - key: FIREBASE_SERVICE_ACCOUNT_JSON
-      #   sync: false
